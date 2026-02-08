@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Cyber Threat Intelligence PRO</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial;
+    background:black;
+    color:white;
+    overflow:hidden;
+}
+
+/* HEADER */
+.header{
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:55px;
+    background:#050505cc;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 20px;
+    z-index:5;
+    border-bottom:1px solid cyan;
+}
+
+/* SIDEBAR */
+.sidebar{
+    position:absolute;
+    left:0;
+    top:55px;
+    width:230px;
+    bottom:0;
+    background:#0a0a0acc;
+    padding:15px;
+    z-index:5;
+    border-right:1px solid cyan;
+}
+
+/* RIGHTBAR */
+.rightbar{
+    position:absolute;
+    right:0;
+    top:55px;
+    width:230px;
+    bottom:0;
+    background:#0a0a0acc;
+    padding:15px;
+    z-index:5;
+    border-left:1px solid cyan;
+}
+
+/* Globe */
+#globeViz{
+    position:absolute;
+    top:55px;
+    left:0;
+    right:0;
+    bottom:0;
+}
+
+h4{color:cyan;margin-bottom:10px;}
+.live{color:lime;}
+
+.log{
+    font-size:12px;
+    height:160px;
+    overflow:hidden;
+    background:#050505;
+    padding:6px;
+}
+</style>
+
+<script src="https://unpkg.com/three"></script>
+<script src="https://unpkg.com/globe.gl"></script>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header">
+<div style="color:rgb(36, 5, 216); font-size:50px">🌍 Strike Defender</div>
+<div class="live">● LIVE</div>
+<div id="time"></div>
+</div>
+
+<!-- LEFT -->
+<div class="sidebar">
+<h4>Threat Types</h4>
+<div>🔴 Malware: <span id="mal">0</span></div>
+<div>🟡 Phishing: <span id="phish">0</span></div>
+<div>🟣 DDoS: <span id="ddos">0</span></div>
+<a href="index.html" style="color:white; font-size:large; line-style:none;">Dashboard</a>
+
+<h4>System</h4>
+<div>Firewall: ACTIVE</div>
+<div>AI Monitor: ON</div>
+</div>
+
+<!-- RIGHT -->
+<div class="rightbar">
+<h4>Stats</h4>
+<div>Total: <span id="count">0</span></div>
+<div id="route"></div>
+
+<h4>Live Feed</h4>
+<div id="log" class="log"></div>
+</div>
+
+<div id="globeViz"></div>
+
+<script>
+
+// ساعة
+const timeEl=document.getElementById("time");
+setInterval(()=>{
+timeEl.innerText=new Date().toLocaleTimeString();
+},1000);
+
+// UI refs
+const malEl=document.getElementById("mal");
+const phishEl=document.getElementById("phish");
+const ddosEl=document.getElementById("ddos");
+const countEl=document.getElementById("count");
+const routeEl=document.getElementById("route");
+const logBox=document.getElementById("log");
+
+// Globe
+const globe=Globe()(document.getElementById('globeViz'))
+.globeImageUrl('https://unpkg.com/three-globe/example/img/earth-dark.jpg')
+.backgroundColor('#000')
+.atmosphereColor('cyan')
+.atmosphereAltitude(0.15);
+
+// Countries
+const countries=[
+{name:"USA",lat:37,lng:-95},
+{name:"Canada",lat:56,lng:-106},
+{name:"Brazil",lat:-14,lng:-51},
+{name:"UK",lat:55,lng:-3},
+{name:"Germany",lat:51,lng:10},
+{name:"France",lat:46,lng:2},
+{name:"Russia",lat:55,lng:37},
+{name:"Egypt",lat:26,lng:30},
+{name:"Saudi",lat:24,lng:45},
+{name:"UAE",lat:24,lng:54},
+{name:"India",lat:21,lng:78},
+{name:"China",lat:35,lng:103},
+{name:"Japan",lat:35,lng:139},
+{name:"South Korea",lat:36,lng:128},
+{name:"Australia",lat:-33,lng:151},
+{name:"South Africa",lat:-30,lng:24},
+{name:"Turkey",lat:39,lng:35},
+{name:"Spain",lat:40,lng:-4},
+{name:"Italy",lat:42,lng:12},
+{name:"Argentina",lat:-34,lng:-64}
+];
+
+// Points
+globe.pointsData(countries)
+.pointAltitude(0.05)
+.pointRadius(0.5)
+.pointColor(()=>'cyan');
+
+// Labels
+globe.labelsData(countries)
+.labelText(d=>d.name)
+.labelSize(1.3)
+.labelAltitude(0.1);
+
+// Attack types
+const types=[
+{name:"Malware",color:"red"},
+{name:"Phishing",color:"yellow"},
+{name:"DDoS",color:"purple"}
+];
+
+let attackCount=0,mal=0,phish=0,ddos=0;
+let activeArcs=[];
+
+function createAttack(){
+
+let a=countries[Math.random()*countries.length|0];
+let b=countries[Math.random()*countries.length|0];
+if(a===b) return;
+
+let t=types[Math.random()*types.length|0];
+
+// counters
+if(t.name==="Malware") mal++;
+if(t.name==="Phishing") phish++;
+if(t.name==="DDoS") ddos++;
+
+malEl.innerText=mal;
+phishEl.innerText=phish;
+ddosEl.innerText=ddos;
+
+// flying arc
+const arc={
+startLat:a.lat,startLng:a.lng,
+endLat:b.lat,endLng:b.lng,
+color:t.color
+};
+
+activeArcs.push(arc);
+if(activeArcs.length>80) activeArcs.shift();
+
+globe.arcsData(activeArcs)
+.arcColor('color')
+.arcAltitude(0.25)
+.arcStroke(1.2)
+.arcDashLength(0.4)
+.arcDashGap(0.2)
+.arcDashInitialGap(()=>Math.random())
+.arcDashAnimateTime(900);
+
+// UI update
+attackCount++;
+countEl.innerText=attackCount;
+
+let msg=`${t.name}: ${a.name} ➜ ${b.name}`;
+routeEl.innerText=msg;
+
+let p=document.createElement("div");
+p.innerText=msg;
+logBox.prepend(p);
+if(logBox.children.length>14) logBox.lastChild.remove();
+}
+
+// attacks loop
+setInterval(()=>{
+for(let i=0;i<2;i++) createAttack();
+},700);
+
+// rotation
+globe.controls().autoRotate=true;
+globe.controls().autoRotateSpeed=0.5;
+
+</script>
+
+</body>
+</html>
